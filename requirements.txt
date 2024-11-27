@@ -1,7 +1,5 @@
-streamlit
 extruct
 requests
-w3lib.html
 w3lib
 pandas
 tabulate
