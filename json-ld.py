@@ -64,7 +64,7 @@ def analyze_existing_json_ld(url):
         return []
 
 # Streamlit app
-st.title("Analizzatore e Generatore di JSON-LD Schema.org")
+st.title("JSON-LD Generator by Fattoretto Agency")
 
 # Input per l'URL
 url = st.text_input("Inserisci l'URL della pagina da analizzare:")
