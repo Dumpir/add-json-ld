@@ -1,8 +1,5 @@
 extruct
+streamlit
 requests
-w3lib
-pandas
-tabulate
-logging
-jsons
 beautifulsoup4
+lxml
