@@ -7,8 +7,24 @@ import logging
 # Configurazione logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-# Funzione per estrarre le proprietà dal vocabolario Schema.org
-def fetch_schema_vocabulary(vocabulary_type):
+# Funzione per estrarre l'elenco dei vocabolari Schema.org
+def fetch_schema_vocabulary():
+    schema_url = "https://schema.org/version/latest/schema.jsonld"
+    try:
+        response = requests.get(schema_url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        # Estrai i tipi dal contesto JSON-LD
+        types = data["@graph"]
+        vocabularies = [item["@id"].replace("schema:", "") for item in types if item["@type"] == "rdfs:Class"]
+        return vocabularies
+    except requests.exceptions.RequestException as e:
+        st.error(f"Errore durante il recupero del vocabolario: {e}")
+        return []
+
+# Funzione per estrarre le proprietà del vocabolario Schema.org
+def fetch_schema_properties(vocabulary_type):
     schema_url = f"https://schema.org/{vocabulary_type}"
     try:
         response = requests.get(schema_url, timeout=10)
@@ -33,7 +49,7 @@ def fetch_schema_vocabulary(vocabulary_type):
 
         return properties
     except requests.exceptions.RequestException as e:
-        st.error(f"Errore durante il recupero del vocabolario: {e}")
+        st.error(f"Errore durante il recupero delle proprietà: {e}")
         return None
 
 # Funzione per analizzare i dati JSON-LD esistenti
@@ -80,41 +96,42 @@ if url and st.button("Analizza JSON-LD"):
 
 # Aggiunta di nuovo vocabolario
 st.subheader("Aggiungi un nuovo vocabolario Schema.org")
-vocabulary_type = st.text_input("Inserisci il tipo di vocabolario (es. 'Product', 'Event', 'Organization'): ")
 
-if vocabulary_type and st.button("Recupera vocabolario"):
-    vocabulary = fetch_schema_vocabulary(vocabulary_type)
-    if vocabulary:
-        st.success(f"Vocabolario '{vocabulary_type}' recuperato con successo!")
-        populated_data = {}
-        for property_name, description in vocabulary.items():
-            value = st.text_input(f"{property_name} ({description}):", key=property_name)
-            if value.strip():
-                populated_data[property_name] = value
+# Recupera dinamicamente i vocabolari disponibili
+vocabularies = fetch_schema_vocabulary()
+if vocabularies:
+    vocabulary_type = st.selectbox("Seleziona il tipo di vocabolario Schema.org:", vocabularies)
 
-        if st.button("Genera JSON-LD"):
-            new_json_ld = {
-                "@context": "https://schema.org",
-                "@type": vocabulary_type,
-                **populated_data,
-            }
-            st.subheader("Nuovo JSON-LD Generato:")
-            
-            # Mostra il JSON generato
-            json_string = json.dumps(new_json_ld, indent=2, ensure_ascii=False)
-            st.code(json_string, language="json", line_numbers=False)
+    if vocabulary_type and st.button("Recupera proprietà"):
+        properties = fetch_schema_properties(vocabulary_type)
+        if properties:
+            st.success(f"Proprietà del vocabolario '{vocabulary_type}' recuperate con successo!")
+            populated_data = {}
+            for property_name, description in properties.items():
+                value = st.text_input(f"{property_name} ({description}):", key=property_name)
+                if value.strip():
+                    populated_data[property_name] = value
 
-            # Copia negli appunti
-            st.success("JSON generato! Usa il pulsante copia sopra per trasferirlo negli appunti.")
+            if st.button("Genera JSON-LD"):
+                new_json_ld = {
+                    "@context": "https://schema.org",
+                    "@type": vocabulary_type,
+                    **populated_data,
+                }
+                st.subheader("Nuovo JSON-LD Generato:")
+                
+                # Mostra il JSON generato
+                json_string = json.dumps(new_json_ld, indent=2, ensure_ascii=False)
+                st.code(json_string, language="json", line_numbers=False)
 
-            # Link al Validator Schema.org
-            st.markdown(
-                f"[Controlla il tuo JSON-LD su Schema.org Validator](https://validator.schema.org/)",
-                unsafe_allow_html=True,
-            )
+                # Link al Validator Schema.org
+                st.markdown(
+                    f"[Controlla il tuo JSON-LD su Schema.org Validator](https://validator.schema.org/)",
+                    unsafe_allow_html=True,
+                )
 
-            # Salva il JSON-LD in un file
-            file_name = "json_ld_only.json"
-            with open(file_name, "w", encoding="utf-8") as f:
-                f.write(json_string)
-            st.success(f"Il file JSON-LD aggiornato è stato salvato come '{file_name}'.")
+                # Salva il JSON-LD in un file
+                file_name = "json_ld_only.json"
+                with open(file_name, "w", encoding="utf-8") as f:
+                    f.write(json_string)
+                st.success(f"Il file JSON-LD aggiornato è stato salvato come '{file_name}'.")
